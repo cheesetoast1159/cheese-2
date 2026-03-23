@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Steal the Cheese</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#1a0e00;
+  --shop:#2d1a00;
+  --floor:#3d2200;
+  --wood:#6b3d00;
+  --c0:#FFD700;--c1:#FF9500;--c2:#FF6B35;--c3:#E8C547;--c4:#F4A261;--c5:#FFBE0B;
+  --cheese:#FFD700;--cheese-dark:#CC9900;
+  --mouse:#8B7355;--mouse-light:#B8A48A;
+  --text:#FFF3CC;--muted:#8B7355;
+  --danger:#FF4444;--perfect:#FFD700;--good:#88FF88;
+}
+html,body{height:100%;width:100%;overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;}
+body{
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'Nunito',sans-serif;color:var(--text);
+  background-image:
+    radial-gradient(ellipse at 20% 80%,#3d2200 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 20%,#2d1500 0%,transparent 50%);
+}
+
+/* ── HUD ── */
+#hud{
+  width:100%;max-width:540px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px 6px;flex-shrink:0;
+  background:linear-gradient(180deg,#0d0700 0%,transparent 100%);
+}
+.hud-score{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(20px,5vw,28px);
+  color:var(--cheese);
+  text-shadow:0 0 20px #FFD70088;
+  letter-spacing:1px;
+}
+.hud-mid{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hud-title{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(13px,3vw,17px);
+  color:var(--cheese);letter-spacing:2px;
+  text-shadow:0 2px 8px #00000088;
+}
+.hud-combo{
+  font-size:clamp(10px,2.5vw,13px);color:var(--good);
+  font-weight:900;letter-spacing:1px;
+}
+.hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.hud-lives{display:flex;gap:3px;}
+.heart{font-size:16px;transition:all .3s;filter:drop-shadow(0 0 4px #FF444488);}
+.heart.lost{opacity:.15;filter:none;}
+.hud-speed{
+  font-size:clamp(9px,2vw,11px);color:var(--muted);
+  font-weight:700;letter-spacing:2px;
+}
+
+/* ── GAME AREA ── */
+#game{
+  position:relative;width:100%;max-width:540px;
+  flex:1;overflow:hidden;cursor:pointer;
+  background:var(--shop);
+}
+
+/* Wood shelf background */
+#shelf-bg{
+  position:absolute;inset:0;z-index:0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #2d1a00 0px,#2d1a00 2px,
+      #3d2200 2px,#3d2200 60px
+    );
+}
+/* Shelf planks */
+.shelf-plank{
+  position:absolute;left:0;right:0;height:8px;
+  background:linear-gradient(180deg,#7a4a00,#5a3200);
+  box-shadow:0 4px 12px #00000066;
+  z-index:2;
+}
+/* Cheese wheel decorations on shelves */
+.shelf-deco{
+  position:absolute;z-index:3;
+  font-size:clamp(14px,3vw,20px);
+  opacity:0.35;pointer-events:none;
+}
+
+/* Lane columns */
+.lane-col{position:absolute;top:0;bottom:0;z-index:1;transition:background .08s;}
+.div-line{position:absolute;top:0;bottom:0;width:2px;background:#1a0e0055;z-index:2;}
+
+/* Hit zone */
+#hit-line{
+  position:absolute;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,transparent,#FFD70099,#FFD700,#FFD70099,transparent);
+  box-shadow:0 0 16px #FFD70066,0 0 32px #FFD70033;
+  z-index:6;
+}
+/* Mouse paws at hit zone */
+.paw{
+  position:absolute;z-index:5;
+  font-size:clamp(16px,4vw,24px);
+  transform:translateY(-50%) translateX(-50%);
+  opacity:.4;transition:opacity .1s,transform .15s;
+  pointer-events:none;
+}
+.paw.lit{opacity:1;transform:translateY(-50%) translateX(-50%) scale(1.3);}
+
+/* ── TILES (cheese blocks) ── */
+.tile{
+  position:absolute;z-index:7;
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+  font-size:clamp(18px,4.5vw,28px);
+  transition:filter .06s;
+  /* Swiss cheese holes effect via border */
+  border:2px solid rgba(0,0,0,.25);
+}
+.tile::before{
+  content:'';
+  position:absolute;inset:0;border-radius:6px;
+  background:repeating-radial-gradient(circle at 30% 40%,rgba(0,0,0,.18) 0,rgba(0,0,0,.18) 3px,transparent 3px,transparent 100%),
+             repeating-radial-gradient(circle at 70% 65%,rgba(0,0,0,.15) 0,rgba(0,0,0,.15) 4px,transparent 4px,transparent 100%),
+             repeating-radial-gradient(circle at 50% 20%,rgba(0,0,0,.12) 0,rgba(0,0,0,.12) 2px,transparent 2px,transparent 100%);
+}
+.tile-inner{position:relative;z-index:1;line-height:1;}
+
+.tile.double-note{
+  border:3px solid #fff;
+  box-shadow:0 0 20px #ffffff88,inset 0 0 12px rgba(255,255,255,.2);
+}
+.tile.double-note::after{
+  content:'✦';position:absolute;
+  top:4px;right:6px;
+  font-size:clamp(8px,2vw,12px);
+  color:#fff;opacity:.9;z-index:2;
+}
+
+.tile.hit-anim{animation:cheeseHit .2s ease-out forwards;}
+@keyframes cheeseHit{
+  0%{transform:scale(1.1) rotate(-3deg);filter:brightness(2.5);opacity:1;}
+  50%{transform:scale(1.3) rotate(5deg);filter:brightness(3);}
+  100%{transform:scale(0.2) rotate(15deg);filter:brightness(4);opacity:0;}
+}
+
+/* ── EFFECTS ── */
+.effect{
+  position:absolute;z-index:12;
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(11px,3vw,16px);
+  letter-spacing:2px;text-align:center;
+  pointer-events:none;
+  animation:floatUp .6s ease-out forwards;
+  white-space:nowrap;
+  text-shadow:0 2px 8px #00000099;
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translateY(0) scale(1.4);}
+  100%{opacity:0;transform:translateY(-60px) scale(.8);}
+}
+/* Cheese particle on hit */
+.particle{
+  position:absolute;z-index:11;
+  font-size:clamp(10px,3vw,16px);
+  pointer-events:none;
+  animation:particle .5s ease-out forwards;
+}
+@keyframes particle{
+  0%{opacity:1;transform:translate(0,0) rotate(0deg);}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot));}
+}
+
+.miss-flash{animation:missFlash .3s ease-out forwards;}
+@keyframes missFlash{
+  0%{background:rgba(255,50,50,.3);}
+  100%{background:transparent;}
+}
+
+#speed-flash{
+  position:absolute;inset:0;z-index:20;
+  pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at center,rgba(255,215,0,.12),transparent 70%);
+}
+#speed-flash.flash{animation:sflash .4s ease-out forwards;}
+@keyframes sflash{0%{opacity:1;}100%{opacity:0;}}
+
+/* ── MOUSE MASCOT ── */
+#mouse-mascot{
+  position:absolute;z-index:8;
+  font-size:clamp(28px,7vw,42px);
+  pointer-events:none;
+  transition:left .1s;
+  bottom:0;
+  transform:translateX(-50%);
+  filter:drop-shadow(0 4px 8px #00000088);
+}
+
+/* ── OVERLAYS ── */
+.overlay{
+  position:absolute;inset:0;
+  background:rgba(10,5,0,.95);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:12px;z-index:50;
+  backdrop-filter:blur(4px);
+}
+.overlay-shop{
+  position:absolute;bottom:0;left:0;right:0;height:120px;
+  background:linear-gradient(180deg,transparent,rgba(61,34,0,.8));
+  pointer-events:none;
+}
+.shop-sign{
+  background:linear-gradient(135deg,#5a3200,#7a4a00);
+  border:3px solid var(--wood);
+  border-radius:12px;
+  padding:16px 32px;
+  box-shadow:0 8px 32px #00000088,inset 0 1px 0 #FFD70033;
+  text-align:center;
+  position:relative;
+}
+.shop-sign::before,.shop-sign::after{
+  content:'🔩';position:absolute;top:8px;font-size:14px;
+}
+.shop-sign::before{left:10px;}
+.shop-sign::after{right:10px;}
+.shop-title{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(26px,7vw,42px);
+  color:var(--cheese);
+  text-shadow:0 0 30px #FFD70066,0 3px 0 #8B6000;
+  letter-spacing:3px;
+  line-height:1.1;
+}
+.shop-subtitle{
+  font-size:clamp(11px,2.8vw,14px);
+  color:#CC9900;
+  letter-spacing:1px;
+  margin-top:2px;
+}
+.tagline{
+  font-size:clamp(10px,2.5vw,13px);
+  color:var(--muted);
+  text-align:center;line-height:1.8;
+  letter-spacing:.5px;
+}
+.legend-box{
+  display:flex;align-items:center;gap:10px;
+  background:#2d1a00;border:2px solid #5a3200;border-radius:8px;
+  padding:8px 16px;
+  font-size:clamp(10px,2.5vw,12px);color:#B8A48A;
+}
+.legend-swatch{
+  width:32px;height:24px;border-radius:6px;
+  background:#FFD700;border:3px solid #fff;
+  box-shadow:0 0 10px #ffffff66;
+}
+.stat-box{
+  background:#2d1a00;border:1px solid #5a3200;border-radius:8px;
+  padding:10px 20px;min-width:180px;text-align:center;
+}
+.stat-label{font-size:clamp(9px,2vw,11px);color:var(--muted);letter-spacing:2px;display:block;margin-bottom:2px;}
+.stat-val{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(18px,5vw,26px);
+  color:var(--cheese);
+  text-shadow:0 0 16px #FFD70066;
+}
+.gameover-title{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(24px,7vw,40px);
+  color:var(--danger);
+  text-shadow:0 0 30px #FF444466;
+  letter-spacing:4px;
+}
+.gameover-sub{
+  font-size:clamp(12px,3vw,16px);color:#CC8888;letter-spacing:1px;
+}
+.keys-hint{
+  font-size:clamp(9px,2vw,11px);color:#5a3200;
+  letter-spacing:3px;margin-top:4px;
+}
+.btn{
+  font-family:'Fredoka One',cursive;
+  font-size:clamp(14px,3.5vw,18px);
+  letter-spacing:3px;border:none;cursor:pointer;
+  border-radius:50px;
+  padding:clamp(12px,3vw,16px) clamp(32px,8vw,52px);
+  transition:transform .1s,filter .1s;
+  touch-action:manipulation;
+}
+.btn:active{transform:scale(.95);filter:brightness(1.2);}
+.btn-start{
+  background:linear-gradient(135deg,#FFD700,#FF9500);
+  color:#1a0800;
+  box-shadow:0 4px 24px #FFD70055,0 2px 0 #8B6000;
+}
+.btn-retry{
+  background:linear-gradient(135deg,#FF6B35,#FF4444);
+  color:#fff;
+  box-shadow:0 4px 24px #FF444455,0 2px 0 #880000;
+}
+.cheese-row{font-size:clamp(20px,5vw,30px);letter-spacing:8px;opacity:.6;}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="hud-score" id="score-val">0</div>
+  <div class="hud-mid">
+    <div class="hud-title">🧀 STEAL THE CHEESE</div>
+    <div class="hud-combo" id="combo-val">x0 combo</div>
+  </div>
+  <div class="hud-right">
+    <div class="hud-lives" id="lives-row">
+      <span class="heart" id="h0">🐭</span>
+      <span class="heart" id="h1">🐭</span>
+      <span class="heart" id="h2">🐭</span>
+    </div>
+    <div class="hud-speed" id="speed-val">SNEAK LV1</div>
+  </div>
+</div>
+
+<div id="game">
+  <div id="shelf-bg"></div>
+  <div id="speed-flash"></div>
+  <div id="tile-layer"></div>
+  <div id="effect-layer"></div>
+  <div id="hit-line"></div>
+  <div id="mouse-mascot">🐭</div>
+
+  <!-- Start overlay -->
+  <div class="overlay" id="overlay-start">
+    <div class="cheese-row">🧀🧀🧀</div>
+    <div class="shop-sign">
+      <div class="shop-title">STEAL THE<br>CHEESE</div>
+      <div class="shop-subtitle">~ Fromage Extraordinaire ~</div>
+    </div>
+    <p class="tagline">
+      Tap the cheese as it reaches the shelf!<br>
+      Sneak fast — the shopkeeper is watching 👁️
+    </p>
+    <div class="legend-box">
+      <div class="legend-swatch"></div>
+      <span>WHITE BORDER = grab TWO at once!</span>
+    </div>
+    <p class="tagline" style="font-size:clamp(9px,2vw,11px);color:#5a3200">
+      Keys: A S D J K L &nbsp;|&nbsp; 3 mice lives &nbsp;|&nbsp; speed up every 5s
+    </p>
+    <button class="btn btn-start" id="btn-start">🐭 START STEALING</button>
+  </div>
+
+  <!-- Game over overlay -->
+  <div class="overlay" id="overlay-gameover" style="display:none">
+    <div class="gameover-title">CAUGHT! 🪤</div>
+    <div class="gameover-sub">The shopkeeper got you!</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+      <div class="stat-box">
+        <span class="stat-label">CHEESE STOLEN</span>
+        <div class="stat-val" id="final-score">0</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">BEST COMBO</span>
+        <div class="stat-val" id="final-combo">x0</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">SNEAK LEVEL</span>
+        <div class="stat-val" id="final-speed">LV1</div>
+      </div>
+    </div>
+    <button class="btn btn-retry" id="btn-retry">🧀 TRY AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const LANES      = 6;
+const LANE_COLORS= ['#FFD700','#FF9500','#FF6B35','#E8C547','#F4A261','#FFBE0B'];
+const HIT_ZONE   = 0.82;
+const TILE_H     = 78;
+const BASE_SPEED = 120;
+const SPEED_INC  = 14;
+const HIT_WIN    = 76;
+const PERF_WIN   = 30;
+const GAP        = 3;
+const MAX_LIVES  = 3;
+const DOUBLE_PROB= 0.16;
+const KEYS       = ['a','s','d','j','k','l'];
+const CHEESE_EMOJI = ['🧀','🧀','🧀','🧀','🧀','🧀'];
+const SHELF_INTERVALS = [0.25, 0.5, 0.75]; // fraction down the game area
+
+// ── STATE ──
+let tiles=[], score=0, combo=0, maxCombo=0, lives=MAX_LIVES;
+let speed=BASE_SPEED, speedLevel=1;
+let spawnTimer=0, speedTimer=0;
+let lastTime=null, rafId=null;
+let running=false, dead=false, tileId=0;
+let mouseLane=2;
+
+const game     = document.getElementById('game');
+const tilLayer = document.getElementById('tile-layer');
+const effLayer = document.getElementById('effect-layer');
+const hitLine  = document.getElementById('hit-line');
+const scoreEl  = document.getElementById('score-val');
+const comboEl  = document.getElementById('combo-val');
+const speedEl  = document.getElementById('speed-val');
+const sflash   = document.getElementById('speed-flash');
+const mascot   = document.getElementById('mouse-mascot');
+const oStart   = document.getElementById('overlay-start');
+const oOver    = document.getElementById('overlay-gameover');
+
+// ── LAYOUT ──
+function laneW()  { return game.clientWidth / LANES; }
+function laneX(i) { return i * laneW() + GAP; }
+function tileW()  { return laneW() - GAP*2; }
+function hitPx()  { return game.clientHeight * HIT_ZONE; }
+
+function buildLanes() {
+  document.querySelectorAll('.lane-col,.div-line,.paw,.shelf-plank,.shelf-deco').forEach(e=>e.remove());
+  const lw = laneW();
+  const hp = hitPx();
+  const gh = game.clientHeight;
+
+  // Shelf planks (decorative horizontal lines)
+  SHELF_INTERVALS.forEach(frac => {
+    const plank = document.createElement('div');
+    plank.className = 'shelf-plank';
+    plank.style.top = (gh * frac) + 'px';
+    game.insertBefore(plank, game.firstChild);
+    // Cheese deco on each shelf
+    for(let i=0;i<3;i++){
+      const deco = document.createElement('div');
+      deco.className = 'shelf-deco';
+      deco.textContent = ['🧀','🫙','🧀'][i];
+      deco.style.left = [lw*0.5, lw*2.8, lw*5][ i ] + 'px';
+      deco.style.top = (gh * frac - 28) + 'px';
+      game.insertBefore(deco, game.firstChild);
+    }
+  });
+
+  // Lane columns
+  for(let i=0; i<LANES; i++){
+    const col = document.createElement('div');
+    col.className = 'lane-col';
+    col.id = 'lane-col-'+i;
+    col.style.cssText = `left:${i*lw}px;width:${lw}px;`;
+    game.insertBefore(col, game.firstChild);
+
+    // Paw indicator at hit zone
+    const paw = document.createElement('div');
+    paw.className = 'paw';
+    paw.id = 'paw-'+i;
+    paw.textContent = '🐾';
+    paw.style.cssText = `left:${i*lw+lw/2}px;top:${hp}px;`;
+    game.insertBefore(paw, game.firstChild);
+  }
+
+  // Dividers
+  for(let i=1; i<LANES; i++){
+    const d = document.createElement('div');
+    d.className = 'div-line';
+    d.style.left = (i*lw) + 'px';
+    game.insertBefore(d, game.firstChild);
+  }
+
+  hitLine.style.top = hp + 'px';
+
+  // Mouse mascot just below hit line
+  mascot.style.bottom = (game.clientHeight - hp - 10) + 'px';
+  mascot.style.left = (laneX(mouseLane) + tileW()/2) + 'px';
+
+  // Reposition in-flight tiles
+  for(const t of tiles){
+    t.el.style.left = laneX(t.lane) + 'px';
+    t.el.style.width = tileW() + 'px';
+  }
+}
+
+// ── SPAWN ──
+function spawnGap() {
+  return Math.max(380, 880 - (speed - BASE_SPEED) * 3.0);
+}
+
+function spawnTile() {
+  const isDouble = Math.random() < DOUBLE_PROB;
+  if(isDouble){
+    const lane1 = Math.floor(Math.random()*LANES);
+    let lane2;
+    do { lane2 = Math.floor(Math.random()*LANES); } while(lane2===lane1);
+    const gid = 'dbl-'+tileId;
+    createTileEl(lane1, true, gid);
+    createTileEl(lane2, true, gid);
+  } else {
+    createTileEl(Math.floor(Math.random()*LANES), false, null);
+  }
+}
+
+function createTileEl(lane, isDouble, groupId) {
+  const el = document.createElement('div');
+  el.className = 'tile' + (isDouble ? ' double-note' : '');
+  const tw = tileW();
+  const col = LANE_COLORS[lane];
+  el.style.cssText = `
+    left:${laneX(lane)}px;width:${tw}px;
+    height:${TILE_H}px;top:${-TILE_H}px;
+    background:linear-gradient(135deg,${col},${shadeColor(col,-20)});
+    box-shadow:0 4px ${isDouble?24:14}px ${col}88,inset 0 1px 0 rgba(255,255,255,.3);
+  `;
+  const inner = document.createElement('div');
+  inner.className = 'tile-inner';
+  inner.textContent = '🧀';
+  el.appendChild(inner);
+  tilLayer.appendChild(el);
+  const tobj = {id:tileId++, lane, y:-TILE_H, el, isDouble, groupId, hit:false};
+  tiles.push(tobj);
+}
+
+function shadeColor(hex, pct) {
+  const n = parseInt(hex.slice(1),16);
+  const r = Math.min(255,Math.max(0,(n>>16)+pct));
+  const g = Math.min(255,Math.max(0,((n>>8)&0xFF)+pct));
+  const b = Math.min(255,Math.max(0,(n&0xFF)+pct));
+  return '#'+(r<<16|g<<8|b).toString(16).padStart(6,'0');
+}
+
+// ── HIT DETECTION ── coordinate-based (no DOM walking)
+function getTileAtPoint(px) {
+  let best=null, bestDist=Infinity;
+  const hp = hitPx();
+  for(const t of tiles){
+    if(t.hit) continue;
+    const tx = laneX(t.lane);
+    const tw2 = tileW();
+    if(px < tx - 10 || px > tx + tw2 + 10) continue;
+    const dist = Math.abs(t.y - hp);
+    if(dist < HIT_WIN && dist < bestDist){ best=t; bestDist=dist; }
+  }
+  return best;
+}
+
+function getTileInLane(lane) {
+  let best=null, bestDist=Infinity;
+  const hp = hitPx();
+  for(const t of tiles){
+    if(t.lane!==lane||t.hit) continue;
+    const d = Math.abs(t.y - hp);
+    if(d < HIT_WIN && d < bestDist){ best=t; bestDist=d; }
+  }
+  return best;
+}
+
+// ── POINTER INPUT ──
+game.addEventListener('pointerdown', e=>{
+  if(!running||dead) return;
+  e.preventDefault();
+  const rect = game.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const t = getTileAtPoint(px);
+  if(t) hitTile(t);
+  else {
+    // Flash the lane they tapped (miss feedback but no penalty for empty tap)
+    const lane = Math.floor(px / laneW());
+    if(lane>=0 && lane<LANES) flashLane(lane, false);
+  }
+}, {passive:false});
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e=>{
+  if(!running||dead) return;
+  const lane = KEYS.indexOf(e.key.toLowerCase());
+  if(lane===-1) return;
+  const t = getTileInLane(lane);
+  if(t) hitTile(t);
+  else flashLane(lane, false);
+});
+
+// ── HIT TILE ──
+function hitTile(tobj) {
+  if(tobj.hit) return;
+  tobj.hit = true;
+  const dist = Math.abs(tobj.y - hitPx());
+  const perfect = dist < PERF_WIN;
+  tobj.el.classList.add('hit-anim');
+  setTimeout(()=>{ tobj.el.remove(); tiles=tiles.filter(t=>t!==tobj); }, 220);
+
+  combo++;
+  if(combo>maxCombo) maxCombo=combo;
+  score += perfect ? 100*combo : 50*combo;
+  scoreEl.textContent = score;
+  comboEl.textContent = 'x'+combo+' combo';
+
+  // Move mouse mascot
+  moveMouse(tobj.lane);
+  flashLane(tobj.lane, true);
+  spawnParticles(tobj.lane, tobj.y);
+  showEffect(tobj.lane, tobj.y, perfect ? '🧀 PERFECT!' : 'SWIPED!');
+}
+
+function moveMouse(lane) {
+  mouseLane = lane;
+  mascot.style.left = (laneX(lane) + tileW()/2) + 'px';
+}
+
+function flashLane(i, isHit) {
+  const col = document.getElementById('lane-col-'+i);
+  const paw = document.getElementById('paw-'+i);
+  if(col){
+    col.style.background = isHit ? LANE_COLORS[i]+'28' : 'rgba(255,255,255,.05)';
+    setTimeout(()=>col.style.background='transparent', 140);
+  }
+  if(paw){
+    paw.classList.add('lit');
+    setTimeout(()=>paw.classList.remove('lit'), 140);
+  }
+}
+
+function spawnParticles(lane, tileY) {
+  const cx = laneX(lane) + tileW()/2;
+  const pieces = ['🧀','✨','⭐'];
+  for(let i=0;i<3;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    const angle = (Math.random()*220 - 110) * Math.PI/180;
+    const dist = 40 + Math.random()*40;
+    p.style.setProperty('--dx', (Math.sin(angle)*dist)+'px');
+    p.style.setProperty('--dy', (-Math.abs(Math.cos(angle))*dist)+'px');
+    p.style.setProperty('--rot', (Math.random()*360)+'deg');
+    p.style.cssText += `left:${cx}px;top:${tileY}px;`;
+    p.textContent = pieces[i%pieces.length];
+    effLayer.appendChild(p);
+    setTimeout(()=>p.remove(), 520);
+  }
+}
+
+function showEffect(lane, tileY, type) {
+  const el = document.createElement('div');
+  el.className='effect';
+  const isPerfect = type.includes('PERFECT');
+  el.style.cssText = `
+    left:${laneX(lane)}px;width:${tileW()}px;
+    top:${Math.max(16, tileY-36)}px;
+    color:${isPerfect?'#FFD700':'#88FF88'};
+  `;
+  el.textContent = type;
+  effLayer.appendChild(el);
+  setTimeout(()=>el.remove(), 650);
+}
+
+function missLane(lane, tileY) {
+  combo=0; comboEl.textContent='x0 combo';
+  const col = document.getElementById('lane-col-'+lane);
+  if(col){ col.classList.add('miss-flash'); setTimeout(()=>col.classList.remove('miss-flash'),300); }
+  showMissEffect(lane, tileY);
+  loseLife();
+}
+
+function showMissEffect(lane, tileY) {
+  const el = document.createElement('div');
+  el.className='effect';
+  el.style.cssText = `left:${laneX(lane)}px;width:${tileW()}px;top:${Math.max(16,tileY-36)}px;color:#FF5555;`;
+  el.textContent = '🪤 CAUGHT!';
+  effLayer.appendChild(el);
+  setTimeout(()=>el.remove(), 650);
+}
+
+function loseLife() {
+  lives--;
+  for(let i=0;i<MAX_LIVES;i++)
+    document.getElementById('h'+i).classList.toggle('lost', i>=lives);
+  if(lives<=0) endGame();
+}
+
+// ── GAME LOOP ──
+function loop(ts) {
+  if(dead) return;
+  if(!lastTime) lastTime=ts;
+  const dt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime=ts;
+
+  speedTimer += dt*1000;
+  if(speedTimer >= 5000){
+    speedTimer=0; speed+=SPEED_INC; speedLevel++;
+    speedEl.textContent = 'SNEAK LV'+speedLevel;
+    sflash.classList.remove('flash'); void sflash.offsetWidth; sflash.classList.add('flash');
+  }
+
+  spawnTimer += dt*1000;
+  if(spawnTimer >= spawnGap()){ spawnTimer=0; spawnTile(); }
+
+  const hp = hitPx();
+  for(const t of tiles){
+    if(t.hit) continue;
+    t.y += speed*dt;
+    t.el.style.top = t.y+'px';
+  }
+
+  const missed = tiles.filter(t=>!t.hit && t.y > hp+TILE_H*1.1);
+  for(const t of missed){
+    t.el.remove();
+    tiles = tiles.filter(x=>x!==t);
+    missLane(t.lane, hp+TILE_H*0.5);
+    if(dead) return;
+  }
+
+  rafId = requestAnimationFrame(loop);
+}
+
+// ── START / END ──
+function startGame() {
+  if(rafId) cancelAnimationFrame(rafId);
+  tiles.forEach(t=>t.el.remove());
+  tilLayer.innerHTML=''; effLayer.innerHTML='';
+  tiles=[]; score=0; combo=0; maxCombo=0; lives=MAX_LIVES;
+  speed=BASE_SPEED; speedLevel=1;
+  spawnTimer=0; speedTimer=0; lastTime=null; dead=false; tileId=0; mouseLane=2;
+  scoreEl.textContent='0';
+  comboEl.textContent='x0 combo';
+  speedEl.textContent='SNEAK LV1';
+  for(let i=0;i<MAX_LIVES;i++) document.getElementById('h'+i).classList.remove('lost');
+  oStart.style.display='none';
+  oOver.style.display='none';
+  buildLanes();
+  running=true;
+  setTimeout(()=>{ rafId=requestAnimationFrame(loop); }, 60);
+}
+
+function endGame() {
+  dead=true; running=false;
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-combo').textContent = 'x'+maxCombo;
+  document.getElementById('final-speed').textContent = 'LV'+speedLevel;
+  oOver.style.display='flex';
+}
+
+// ── BUTTON HANDLERS ──
+document.getElementById('btn-start').addEventListener('click', e=>{e.preventDefault();startGame();});
+document.getElementById('btn-retry').addEventListener('click', e=>{e.preventDefault();startGame();});
+document.getElementById('btn-start').addEventListener('pointerdown', e=>e.stopPropagation(), {passive:true});
+document.getElementById('btn-retry').addEventListener('pointerdown', e=>e.stopPropagation(), {passive:true});
+
+window.addEventListener('resize', ()=>{ if(running) buildLanes(); });
+buildLanes();
+</script>
+</body>
+</html>
